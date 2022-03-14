@@ -46,9 +46,22 @@ def get_book_comments(id, book_url):
 
     comments_texts = []
     for comment in comments:
-        comment_text = str(comment.find("span", class_="black")).split('<span class="black">')[1].split("</span>")[0]
+        comment_text = comment.find("span", class_="black").text
         comments_texts.append(comment_text)
     return comments_texts
+
+
+def get_book_genre(id, book_url):
+    response = requests.get(book_url.format(id=id))
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "lxml")
+
+    book_genres = []
+    book_genre_tags = soup.find("span", class_="d_book").find_all("a")
+    for genre_tag in book_genre_tags:
+        book_genres.append(genre_tag.text)
+    return book_genres
 
 
 def check_for_redirect(url, id, book_url, template_url):
@@ -59,6 +72,7 @@ def check_for_redirect(url, id, book_url, template_url):
         print(download_image(get_book_img_url(id, book_url, template_url)))
         print(download_txt(response, get_book_name(id, book_url)))
         print(get_book_comments(id, book_url))
+        print(get_book_genre(id, book_url))
 
 
 def download_image(img_url, folder = "images/"):
