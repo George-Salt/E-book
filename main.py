@@ -36,13 +36,29 @@ def get_book_img_url(id, book_url, template_url):
     return full_img_url
 
 
-def check_for_redirect(url, id, book_url, main_url):
+def get_book_comments(id, book_url):
+    response = requests.get(book_url.format(id=id))
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "lxml")
+
+    comments = soup.find_all("div", class_="texts")
+
+    comments_texts = []
+    for comment in comments:
+        comment_text = str(comment.find("span", class_="black")).split('<span class="black">')[1].split("</span>")[0]
+        comments_texts.append(comment_text)
+    return comments_texts
+
+
+def check_for_redirect(url, id, book_url, template_url):
     response = requests.get(url.format(id=id))
     if not response.history == []:
         response.raise_for_status()
     else:
-        print(download_image(get_book_img_url(id, book_url, main_url)))
+        print(download_image(get_book_img_url(id, book_url, template_url)))
         print(download_txt(response, get_book_name(id, book_url)))
+        print(get_book_comments(id, book_url))
 
 
 def download_image(img_url, folder = "images/"):
