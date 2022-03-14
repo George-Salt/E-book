@@ -14,54 +14,36 @@ URL = "http://tululu.org/txt.php?id={id}"
 book_url = "http://tululu.org/b{id}/"
 
 
-def get_book_name(id, book_url):
+def parse_book_page(id, book_url, template_url):
     response = requests.get(book_url.format(id=id))
+    page_code = BeautifulSoup(response.text, "lxml")
 
-    soup = BeautifulSoup(response.text, "lxml")
+    book_name = page_code.find("h1").text.split(" :: ")[0].strip()
 
-    title_tag = soup.find("h1")
-    book_name = title_tag.text.split(" :: ")[0].strip()
-    return book_name
+    author_name = page_code.find("h1").text.split(" :: ")[0].strip()
 
-
-def get_book_img_url(id, book_url, template_url):
-    response = requests.get(book_url.format(id=id))
-    response.raise_for_status()
-
-    soup = BeautifulSoup(response.text, "lxml")
-    soup.unicode
-
-    img_url = soup.find("div", class_="bookimage").find("img")["src"]
+    img_url = page_code.find("div", class_="bookimage").find("img")["src"]
     full_img_url = urljoin(template_url, img_url)
-    return full_img_url
 
+    book_genres = []
+    book_genre_tags = page_code.find("span", class_="d_book").find_all("a")
+    for genre_tag in book_genre_tags:
+        book_genres.append(genre_tag.text)
 
-def get_book_comments(id, book_url):
-    response = requests.get(book_url.format(id=id))
-    response.raise_for_status()
-
-    soup = BeautifulSoup(response.text, "lxml")
-
-    comments = soup.find_all("div", class_="texts")
-
+    comments = page_code.find_all("div", class_="texts")
     comments_texts = []
     for comment in comments:
         comment_text = comment.find("span", class_="black").text
         comments_texts.append(comment_text)
-    return comments_texts
 
-
-def get_book_genre(id, book_url):
-    response = requests.get(book_url.format(id=id))
-    response.raise_for_status()
-
-    soup = BeautifulSoup(response.text, "lxml")
-
-    book_genres = []
-    book_genre_tags = soup.find("span", class_="d_book").find_all("a")
-    for genre_tag in book_genre_tags:
-        book_genres.append(genre_tag.text)
-    return book_genres
+    book_parameters = {
+        "Название": book_name,
+        "Автор": author_name,
+        "Ссылка на картинку": full_img_url,
+        "Жанр": book_genres,
+        "Комментарии": comments_texts
+    }
+    return book_parameters
 
 
 def check_for_redirect(url, id, book_url, template_url):
@@ -69,10 +51,9 @@ def check_for_redirect(url, id, book_url, template_url):
     if not response.history == []:
         response.raise_for_status()
     else:
-        print(download_image(get_book_img_url(id, book_url, template_url)))
-        print(download_txt(response, get_book_name(id, book_url)))
-        print(get_book_comments(id, book_url))
-        print(get_book_genre(id, book_url))
+        print(download_image(parse_book_page(id, book_url, template_url)["Ссылка на картинку"]))
+        print(download_txt(response, parse_book_page(id, book_url, template_url)["Название"]))
+        print(parse_book_page(id, book_url, template_url))
 
 
 def download_image(img_url, folder = "images/"):
