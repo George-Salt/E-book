@@ -4,6 +4,7 @@ from urllib.parse import unquote
 from urllib.parse import urljoin
 from urllib.parse import urlsplit
 
+import argparse
 import requests
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
@@ -15,7 +16,7 @@ def parse_book_page(id, book_url, template_url):
 
     book_name = page_code.find("h1").text.split(" :: ")[0].strip()
 
-    author_name = page_code.find("h1").text.split(" :: ")[0].strip()
+    author_name = page_code.find("h1").text.split(" :: ")[1].strip()
 
     img_url = page_code.find("div", class_="bookimage").find("img")["src"]
     full_img_url = urljoin(template_url, img_url)
@@ -69,6 +70,12 @@ def download_txt(response, filename, folder = "books/"):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Программа скачивает книги, картинки к ним и выводит описание книги."
+    )
+    parser.add_argument("--start_id", type=int, help="С какой книги скачать", default=1)
+    parser.add_argument("--end_id", type=int, help="До какой книги скачать", default=10)
+
     template_img_url = "http://tululu.org/images/nopic.gif"
     download_url = "http://tululu.org/txt.php?id={id}"
     book_url = "http://tululu.org/b{id}/"
@@ -77,7 +84,7 @@ if __name__ == "__main__":
         os.makedirs("images", exist_ok = True)
         os.makedirs("books", exist_ok = True)
 
-        for book_num in range(10):
+        for book_num in range(parser.parse_args().start_id, parser.parse_args().end_id):
             check_for_redirect(download_url, book_num, book_url, template_img_url)
     except HTTPError:
         print("Такой книги не существует!")
