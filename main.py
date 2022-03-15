@@ -1,10 +1,8 @@
+import argparse
 import os
 from urllib.error import HTTPError
-from urllib.parse import unquote
-from urllib.parse import urljoin
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urljoin, urlsplit
 
-import argparse
 import requests
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
