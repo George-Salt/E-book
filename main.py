@@ -9,11 +9,6 @@ from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 
 
-template_img_url = "http://tululu.org/images/nopic.gif"
-URL = "http://tululu.org/txt.php?id={id}"
-book_url = "http://tululu.org/b{id}/"
-
-
 def parse_book_page(id, book_url, template_url):
     response = requests.get(book_url.format(id=id))
     page_code = BeautifulSoup(response.text, "lxml")
@@ -73,11 +68,16 @@ def download_txt(response, filename, folder = "books/"):
     return f"Книга: {filepath}"
 
 
-try:
-    os.makedirs("images", exist_ok = True)
-    os.makedirs("books", exist_ok = True)
+if __name__ == "__main__":
+    template_img_url = "http://tululu.org/images/nopic.gif"
+    download_url = "http://tululu.org/txt.php?id={id}"
+    book_url = "http://tululu.org/b{id}/"
 
-    for book_num in range(10):
-        check_for_redirect(URL, book_num, book_url, template_img_url)
-except HTTPError:
-    print("Такой книги не существует!")
+    try:
+        os.makedirs("images", exist_ok = True)
+        os.makedirs("books", exist_ok = True)
+
+        for book_num in range(10):
+            check_for_redirect(download_url, book_num, book_url, template_img_url)
+    except HTTPError:
+        print("Такой книги не существует!")
