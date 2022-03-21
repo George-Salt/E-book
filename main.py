@@ -1,15 +1,16 @@
 import argparse
 import os
-from urllib.error import HTTPError
-from urllib.parse import unquote, urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
+from urllib.error import HTTPError
+from urllib.parse import unquote, urljoin, urlsplit
 
 
 def parse_book_page(id, book_url, template_url):
     response = requests.get(book_url.format(id=id))
+    response.raise_for_status()
     page_code = BeautifulSoup(response.text, "lxml")
 
     book_name = page_code.find("h1").text.split(" :: ")[0].strip()
@@ -19,16 +20,11 @@ def parse_book_page(id, book_url, template_url):
     img_url = page_code.find("div", class_="bookimage").find("img")["src"]
     full_img_url = urljoin(template_url, img_url)
 
-    book_genres = []
     book_genre_tags = page_code.find("span", class_="d_book").find_all("a")
-    for genre_tag in book_genre_tags:
-        book_genres.append(genre_tag.text)
+    book_genres = [genre_tag.text for genre_tag in book_genre_tags]
 
     comments = page_code.find_all("div", class_="texts")
-    comments_texts = []
-    for comment in comments:
-        comment_text = comment.find("span", class_="black").text
-        comments_texts.append(comment_text)
+    comments_texts = [comment.find("span", class_="black").text for comment in comments]
 
     book_parameters = {
         "Название": book_name,
@@ -42,12 +38,15 @@ def parse_book_page(id, book_url, template_url):
 
 def check_for_redirect(url, id, book_url, template_url):
     response = requests.get(url.format(id=id))
+    response.raise_for_status()
+
     if not response.history == []:
-        response.raise_for_status()
+        print(f"Книги с id {id} не существует!")
     else:
-        print(download_image(parse_book_page(id, book_url, template_url)["Ссылка на картинку"]))
-        print(download_txt(response, parse_book_page(id, book_url, template_url)["Название"]))
-        print(parse_book_page(id, book_url, template_url))
+        book_page = parse_book_page(id, book_url, template_url)
+        print(download_image(book_page["Ссылка на картинку"]))
+        print(download_txt(response, book_page["Название"]))
+        print(book_page)
 
 
 def download_image(img_url, folder = "images/"):
@@ -62,8 +61,8 @@ def download_image(img_url, folder = "images/"):
 
 def download_txt(response, filename, folder = "books/"):
     filepath = os.path.join(folder, f"{sanitize_filename(filename)}.txt")
-    with open(filepath, "wb") as file:
-        file.write(response.content)
+    with open(filepath, "w") as file:
+        file.write(response.text)
     return f"Книга: {filepath}"
 
 
@@ -76,8 +75,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     template_img_url = "http://tululu.org/images/nopic.gif"
-    download_url = "http://tululu.org/txt.php?id={id}"
-    book_url = "http://tululu.org/b{id}/"
+    download_url = "https://tululu.org/txt.php?id={id}"
+    book_url = "https://tululu.org/b{id}/"
 
     try:
         os.makedirs("images", exist_ok = True)
