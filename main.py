@@ -1,4 +1,5 @@
 import argparse
+from collections import defaultdict
 import os
 
 import requests
@@ -13,9 +14,8 @@ def parse_book_page(id, book_url, template_url):
     response.raise_for_status()
     page_code = BeautifulSoup(response.text, "lxml")
 
-    book_name = page_code.find("h1").text.split(" :: ")[0].strip()
-
-    author_name = page_code.find("h1").text.split(" :: ")[1].strip()
+    header_tag = page_code.find("h1").text
+    book_name, author_name = header_tag.split(" :: ")
 
     img_url = page_code.find("div", class_="bookimage").find("img")["src"]
     full_img_url = urljoin(template_url, img_url)
@@ -27,8 +27,8 @@ def parse_book_page(id, book_url, template_url):
     comments_texts = [comment.find("span", class_="black").text for comment in comments]
 
     book_parameters = {
-        "Название": book_name,
-        "Автор": author_name,
+        "Название": book_name.strip(),
+        "Автор": author_name.strip(),
         "Ссылка на картинку": full_img_url,
         "Жанр": book_genres,
         "Комментарии": comments_texts
@@ -36,8 +36,9 @@ def parse_book_page(id, book_url, template_url):
     return book_parameters
 
 
-def check_for_redirect(url, id, book_url, template_url):
-    response = requests.get(url.format(id=id))
+def check_for_redirect_and_download_book(url, id, book_url, template_url):
+    params = {"id": id}
+    response = requests.get(url, params)
     response.raise_for_status()
 
     if not response.history == []:
@@ -45,7 +46,7 @@ def check_for_redirect(url, id, book_url, template_url):
     else:
         book_page = parse_book_page(id, book_url, template_url)
         print(download_image(book_page["Ссылка на картинку"]))
-        print(download_txt(response, book_page["Название"]))
+        print(download_books_with_info(response, book_page["Название"]))
         print(book_page)
 
 
@@ -59,10 +60,10 @@ def download_image(img_url, folder = "images/"):
     return f"Картинка: {filepath}"
 
 
-def download_txt(response, filename, folder = "books/"):
+def download_books_with_info(response, filename, folder = "books/"):
     filepath = os.path.join(folder, f"{sanitize_filename(filename)}.txt")
-    with open(filepath, "w") as file:
-        file.write(response.text)
+    with open(filepath, "wb") as file:
+        file.write(response.content)
     return f"Книга: {filepath}"
 
 
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     template_img_url = "http://tululu.org/images/nopic.gif"
-    download_url = "https://tululu.org/txt.php?id={id}"
+    download_url = "https://tululu.org/txt.php"
     book_url = "https://tululu.org/b{id}/"
 
     try:
@@ -83,6 +84,6 @@ if __name__ == "__main__":
         os.makedirs("books", exist_ok = True)
 
         for book_num in range(args.start_id, args.end_id):
-            check_for_redirect(download_url, book_num, book_url, template_img_url)
+            check_for_redirect_and_download_book(download_url, book_num, book_url, template_img_url)
     except HTTPError:
         print("Такой книги не существует!")
