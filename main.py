@@ -1,5 +1,4 @@
 import argparse
-from collections import defaultdict
 import os
 
 import requests
