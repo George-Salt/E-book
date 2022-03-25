@@ -35,22 +35,21 @@ def parse_book_page(id, book_url, template_url):
     return book_parameters
 
 
-def check_for_redirect_and_download_book(url, id, book_url, template_url):
+def check_for_redirect_and_download_book(url, id):
     params = {"id": id}
     response = requests.get(url, params)
     response.raise_for_status()
 
-    if response.history:
-        print(f"Книги с id {id} не существует!")
+    if len(response.history) != 0:
+        save_permission = False
     else:
-        book_page = parse_book_page(id, book_url, template_url)
-        print(download_image(book_page["Ссылка на картинку"]))
-        print(save_book(response, book_page["Название"]))
-        print(book_page)
+        save_permission = True
+    return save_permission
 
 
 def download_image(img_url, folder = "images/"):
     response = requests.get(img_url)
+    response.raise_for_status()
 
     filename = urlsplit(img_url).path.split("/")[-1]
     filepath = os.path.join(folder, filename)
@@ -59,10 +58,14 @@ def download_image(img_url, folder = "images/"):
     return f"Картинка: {filepath}"
 
 
-def save_book(response, filename, folder = "books/"):
+def save_book(url, id, filename, folder = "books/"):
+    params = {"id": id}
+    response = requests.get(url, params)
+    response.raise_for_status()
+
     filepath = os.path.join(folder, f"{sanitize_filename(filename)}.txt")
-    with open(filepath, "wb") as file:
-        file.write(response.content)
+    with open(filepath, "w", encoding="utf-8") as file:
+        file.write(response.text)
     return f"Книга: {filepath}"
 
 
@@ -83,6 +86,14 @@ if __name__ == "__main__":
             os.makedirs("images", exist_ok = True)
             os.makedirs("books", exist_ok = True)
 
-            check_for_redirect_and_download_book(download_url, book_num, book_url, template_img_url)
+            if check_for_redirect_and_download_book(download_url, book_num):
+                book_page = parse_book_page(book_num, book_url, template_img_url)
+                print(
+                    save_book(download_url, book_num, book_page["Название"]),
+                    download_image(book_page["Ссылка на картинку"]),
+                    book_page
+                )
+            else:
+                continue
         except HTTPError:
             continue
