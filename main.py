@@ -40,12 +40,12 @@ def check_for_redirect_and_download_book(url, id, book_url, template_url):
     response = requests.get(url, params)
     response.raise_for_status()
 
-    if not response.history == []:
+    if response.history:
         print(f"Книги с id {id} не существует!")
     else:
         book_page = parse_book_page(id, book_url, template_url)
         print(download_image(book_page["Ссылка на картинку"]))
-        print(download_books_with_info(response, book_page["Название"]))
+        print(save_book(response, book_page["Название"]))
         print(book_page)
 
 
@@ -59,7 +59,7 @@ def download_image(img_url, folder = "images/"):
     return f"Картинка: {filepath}"
 
 
-def download_books_with_info(response, filename, folder = "books/"):
+def save_book(response, filename, folder = "books/"):
     filepath = os.path.join(folder, f"{sanitize_filename(filename)}.txt")
     with open(filepath, "wb") as file:
         file.write(response.content)
@@ -78,11 +78,11 @@ if __name__ == "__main__":
     download_url = "https://tululu.org/txt.php"
     book_url = "https://tululu.org/b{id}/"
 
-    try:
-        os.makedirs("images", exist_ok = True)
-        os.makedirs("books", exist_ok = True)
+    for book_num in range(args.start_id, args.end_id):
+        try:
+            os.makedirs("images", exist_ok = True)
+            os.makedirs("books", exist_ok = True)
 
-        for book_num in range(args.start_id, args.end_id):
             check_for_redirect_and_download_book(download_url, book_num, book_url, template_img_url)
-    except HTTPError:
-        print("Такой книги не существует!")
+        except HTTPError:
+            continue
