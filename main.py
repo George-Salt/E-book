@@ -35,12 +35,12 @@ def parse_book_page(id, book_url, template_url):
     return book_parameters
 
 
-def check_for_redirect_and_download_book(url, id):
+def check_for_redirect(url, id):
     params = {"id": id}
     response = requests.get(url, params)
     response.raise_for_status()
 
-    if len(response.history) != 0:
+    if response.history:
         save_permission = False
     else:
         save_permission = True
@@ -86,7 +86,7 @@ if __name__ == "__main__":
             os.makedirs("images", exist_ok = True)
             os.makedirs("books", exist_ok = True)
 
-            if check_for_redirect_and_download_book(download_url, book_num):
+            if check_for_redirect(download_url, book_num):
                 book_page = parse_book_page(book_num, book_url, template_img_url)
                 print(
                     save_book(download_url, book_num, book_page["Название"]),
