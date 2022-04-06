@@ -35,16 +35,10 @@ def parse_book_page(id, book_url, template_url):
     return book_parameters
 
 
-def check_for_redirect(url, id):
-    params = {"id": id}
-    response = requests.get(url, params)
-    response.raise_for_status()
+def check_for_redirect(response):
 
     if response.history:
-        save_permission = False
-    else:
-        save_permission = True
-    return save_permission
+        raise HTTPError("http://example.com", 302, "HTTPError", {}, None)
 
 
 def download_image(img_url, folder = "images/"):
@@ -58,11 +52,7 @@ def download_image(img_url, folder = "images/"):
     return f"Картинка: {filepath}"
 
 
-def save_book(url, id, filename, folder = "books/"):
-    params = {"id": id}
-    response = requests.get(url, params)
-    response.raise_for_status()
-
+def save_book(response, filename, folder = "books/"):
     filepath = os.path.join(folder, f"{sanitize_filename(filename)}.txt")
     with open(filepath, "w", encoding="utf-8") as file:
         file.write(response.text)
@@ -81,19 +71,19 @@ if __name__ == "__main__":
     download_url = "https://tululu.org/txt.php"
     book_url = "https://tululu.org/b{id}/"
 
+    os.makedirs("images", exist_ok = True)
+    os.makedirs("books", exist_ok = True)
     for book_num in range(args.start_id, args.end_id):
+        params = {"id": book_num}
+        response = requests.get(download_url, params)
         try:
-            os.makedirs("images", exist_ok = True)
-            os.makedirs("books", exist_ok = True)
-
-            if check_for_redirect(download_url, book_num):
-                book_page = parse_book_page(book_num, book_url, template_img_url)
-                print(
-                    save_book(download_url, book_num, book_page["Название"]),
-                    download_image(book_page["Ссылка на картинку"]),
-                    book_page
-                )
-            else:
-                continue
+            response.raise_for_status()
+            check_for_redirect(response)
+            book_page = parse_book_page(book_num, book_url, template_img_url)
+            print(
+                save_book(response, book_page["Название"]),
+                download_image(book_page["Ссылка на картинку"]),
+                book_page
+            )
         except HTTPError:
-            continue
+            print("Непредвиденная ошибка")
