@@ -4,7 +4,6 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
-from urllib.error import HTTPError
 from urllib.parse import unquote, urljoin, urlsplit
 
 
@@ -36,9 +35,8 @@ def parse_book_page(id, book_url, template_url):
 
 
 def check_for_redirect(response):
-
     if response.history:
-        raise HTTPError("http://example.com", 302, "HTTPError", {}, None)
+        raise requests.exceptions.HTTPError
 
 
 def download_image(img_url, folder = "images/"):
@@ -85,5 +83,5 @@ if __name__ == "__main__":
                 download_image(book_page["Ссылка на картинку"]),
                 book_page
             )
-        except HTTPError:
-            print("Непредвиденная ошибка")
+        except requests.exceptions.HTTPError:
+            print("Книги не существует")
